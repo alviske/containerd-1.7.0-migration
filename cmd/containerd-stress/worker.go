@@ -103,7 +103,7 @@ func (w *ctrWorker) runContainer(ctx context.Context, id string) (err error) {
 			err = derr
 		}
 	}()
-	task, err := c.NewTask(ctx, cio.NullIO)
+	task, err := c.NewTask(ctx, cio.NullIO, "")
 	if err != nil {
 		return err
 	}

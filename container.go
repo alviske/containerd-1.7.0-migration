@@ -17,10 +17,13 @@
 package containerd
 
 import (
+	"archive/tar"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 
@@ -56,7 +59,8 @@ type Container interface {
 	// Delete removes the container
 	Delete(context.Context, ...DeleteOpts) error
 	// NewTask creates a new task based on the container metadata
-	NewTask(context.Context, cio.Creator, ...NewTaskOpts) (Task, error)
+	// TODO(ke): add checkpoint path option for restoring from checkpoint
+	NewTask(context.Context, cio.Creator, string, ...NewTaskOpts) (Task, error)
 	// Spec returns the OCI runtime specification
 	Spec(context.Context) (*oci.Spec, error)
 	// Task returns the current task for the container
@@ -207,7 +211,7 @@ func (c *container) Image(ctx context.Context) (Image, error) {
 	return NewImage(c.client, i), nil
 }
 
-func (c *container) NewTask(ctx context.Context, ioCreate cio.Creator, opts ...NewTaskOpts) (_ Task, err error) {
+func (c *container) NewTask(ctx context.Context, ioCreate cio.Creator, checkpointPath string, opts ...NewTaskOpts) (_ Task, err error) {
 	i, err := ioCreate(c.id)
 	if err != nil {
 		return nil, err
@@ -243,6 +247,15 @@ func (c *container) NewTask(ctx context.Context, ioCreate cio.Creator, opts ...N
 		mounts, err := s.Mounts(ctx, r.SnapshotKey)
 		if err != nil {
 			return nil, err
+		}
+
+		// TODO(KE): untar checkpointed rootfs if checkpointPath is provided
+		if checkpointPath != "" {
+			tarPath := path.Join("/var/lib/kubelet/migration", checkpointPath, "fs.tar")
+			unTarPath, _ := path.Split(strings.Split(mounts[0].Options[2], "upperdir=")[1])
+			if err := UnTarContainerRootfs(tarPath, unTarPath); err != nil {
+				return nil, err
+			}
 		}
 		spec, err := c.Spec(ctx)
 		if err != nil {
@@ -303,6 +316,48 @@ func (c *container) NewTask(ctx context.Context, ioCreate cio.Creator, opts ...N
 	}
 	t.pid = response.Pid
 	return t, nil
+}
+
+// TODO(KE): UnTarContainerRootfs untars the checkpointed rootfs
+func UnTarContainerRootfs(tarball, targetPath string) error {
+	reader, err := os.Open(tarball)
+	if err != nil {
+		return err
+	}
+	defer reader.Close()
+
+	tarReader := tar.NewReader(reader)
+	for {
+		header, err := tarReader.Next()
+		if err == io.EOF {
+			break // End of tar archive
+		} else if err != nil {
+			return err
+		}
+
+		// unTar
+		fullpath := filepath.Join(targetPath, header.Name)
+		info := header.FileInfo()
+		if info.IsDir() {
+			if err = os.MkdirAll(fullpath, info.Mode()); err != nil {
+				return err
+			}
+			continue
+		}
+
+		file, err := os.OpenFile(fullpath, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, info.Mode())
+		if err != nil {
+			return err
+		}
+		defer file.Close()
+
+		_, err = io.Copy(file, tarReader)
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+	return nil
 }
 
 func (c *container) Update(ctx context.Context, opts ...UpdateContainerOpts) error {

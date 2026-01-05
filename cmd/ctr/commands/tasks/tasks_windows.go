@@ -79,7 +79,7 @@ func NewTask(ctx gocontext.Context, client *containerd.Client, container contain
 	} else {
 		ioCreator = cio.NewCreator(append([]cio.Opt{cio.WithStdio}, ioOpts...)...)
 	}
-	return container.NewTask(ctx, ioCreator)
+	return container.NewTask(ctx, ioCreator, "")
 }
 
 // GetNewTaskOpts resolves containerd.NewTaskOpts from cli.Context

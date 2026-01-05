@@ -74,7 +74,7 @@ func (s *startChange) apply(ctx context.Context, client *containerd.Client) erro
 		}
 	}
 	killTask(ctx, s.container)
-	task, err := s.container.NewTask(ctx, log)
+	task, err := s.container.NewTask(ctx, log, "")
 	if err != nil {
 		return err
 	}

@@ -39,15 +39,24 @@ import (
 
 // StartContainer starts the container.
 func (c *criService) StartContainer(ctx context.Context, r *runtime.StartContainerRequest) (retRes *runtime.StartContainerResponse, retErr error) {
+	// New container start logic.
+	if err := c.startContainer(ctx, r.GetContainerId(), ""); err != nil {
+		return nil, err
+	}
+	return &runtime.StartContainerResponse{}, nil
+}
+
+// TODO(ke): when restoreing from checkpoint, we need to handle container start differently.
+func (c *criService) startContainer(ctx context.Context, containerID, checkpointPath string, opts ...containerd.NewTaskOpts) (retErr error) {
 	start := time.Now()
-	cntr, err := c.containerStore.Get(r.GetContainerId())
+	cntr, err := c.containerStore.Get(containerID)
 	if err != nil {
-		return nil, fmt.Errorf("an error occurred when try to find container %q: %w", r.GetContainerId(), err)
+		return fmt.Errorf("an error occurred when try to find container %q: %w", containerID, err)
 	}
 
 	info, err := cntr.Container.Info(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("get container info: %w", err)
+		return fmt.Errorf("get container info: %w", err)
 	}
 
 	id := cntr.ID
@@ -58,7 +67,7 @@ func (c *criService) StartContainer(ctx context.Context, r *runtime.StartContain
 	// Set starting state to prevent other start/remove operations against this container
 	// while it's being started.
 	if err := setContainerStarting(cntr); err != nil {
-		return nil, fmt.Errorf("failed to set starting state for container %q: %w", id, err)
+		return fmt.Errorf("failed to set starting state for container %q: %w", id, err)
 	}
 	defer func() {
 		if retErr != nil {
@@ -82,11 +91,11 @@ func (c *criService) StartContainer(ctx context.Context, r *runtime.StartContain
 	// Get sandbox config from sandbox store.
 	sandbox, err := c.sandboxStore.Get(meta.SandboxID)
 	if err != nil {
-		return nil, fmt.Errorf("sandbox %q not found: %w", meta.SandboxID, err)
+		return fmt.Errorf("sandbox %q not found: %w", meta.SandboxID, err)
 	}
 	sandboxID := meta.SandboxID
 	if sandbox.Status.Get().State != sandboxstore.StateReady {
-		return nil, fmt.Errorf("sandbox container %q is not running", sandboxID)
+		return fmt.Errorf("sandbox container %q is not running", sandboxID)
 	}
 
 	// Recheck target container validity in Linux namespace options.
@@ -95,7 +104,7 @@ func (c *criService) StartContainer(ctx context.Context, r *runtime.StartContain
 		if nsOpts.GetPid() == runtime.NamespaceMode_TARGET {
 			_, err := c.validateTargetContainer(sandboxID, nsOpts.TargetId)
 			if err != nil {
-				return nil, fmt.Errorf("invalid target container: %w", err)
+				return fmt.Errorf("invalid target container: %w", err)
 			}
 		}
 	}
@@ -112,21 +121,24 @@ func (c *criService) StartContainer(ctx context.Context, r *runtime.StartContain
 
 	ctrInfo, err := container.Info(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get container info: %w", err)
+		return fmt.Errorf("failed to get container info: %w", err)
 	}
 
 	ociRuntime, err := c.getSandboxRuntime(sandbox.Config, sandbox.Metadata.RuntimeHandler)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get sandbox runtime: %w", err)
+		return fmt.Errorf("failed to get sandbox runtime: %w", err)
 	}
 
 	taskOpts := c.taskOpts(ctrInfo.Runtime.Name)
 	if ociRuntime.Path != "" {
 		taskOpts = append(taskOpts, containerd.WithRuntimePath(ociRuntime.Path))
 	}
-	task, err := container.NewTask(ctx, ioCreation, taskOpts...)
+
+	// TODO(KE): restore container task
+	taskOpts = append(taskOpts, opts...)
+	task, err := container.NewTask(ctx, ioCreation, checkpointPath, taskOpts...)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create containerd task: %w", err)
+		return fmt.Errorf("failed to create containerd task: %w", err)
 	}
 	defer func() {
 		if retErr != nil {
@@ -142,7 +154,7 @@ func (c *criService) StartContainer(ctx context.Context, r *runtime.StartContain
 	// wait is a long running background request, no timeout needed.
 	exitCh, err := task.Wait(ctrdutil.NamespacedContext())
 	if err != nil {
-		return nil, fmt.Errorf("failed to wait for containerd task: %w", err)
+		return fmt.Errorf("failed to wait for containerd task: %w", err)
 	}
 
 	defer func() {
@@ -158,12 +170,12 @@ func (c *criService) StartContainer(ctx context.Context, r *runtime.StartContain
 	err = c.nri.StartContainer(ctx, &sandbox, &cntr)
 	if err != nil {
 		log.G(ctx).WithError(err).Errorf("NRI container start failed")
-		return nil, fmt.Errorf("NRI container start failed: %w", err)
+		return fmt.Errorf("NRI container start failed: %w", err)
 	}
 
 	// Start containerd task.
 	if err := task.Start(ctx); err != nil {
-		return nil, fmt.Errorf("failed to start containerd task %q: %w", id, err)
+		return fmt.Errorf("failed to start containerd task %q: %w", id, err)
 	}
 
 	// Update container start timestamp.
@@ -172,7 +184,7 @@ func (c *criService) StartContainer(ctx context.Context, r *runtime.StartContain
 		status.StartedAt = time.Now().UnixNano()
 		return status, nil
 	}); err != nil {
-		return nil, fmt.Errorf("failed to update container %q state: %w", id, err)
+		return fmt.Errorf("failed to update container %q state: %w", id, err)
 	}
 
 	// It handles the TaskExit event and update container state after this.
@@ -187,7 +199,7 @@ func (c *criService) StartContainer(ctx context.Context, r *runtime.StartContain
 
 	containerStartTimer.WithValues(info.Runtime.Name).UpdateSince(start)
 
-	return &runtime.StartContainerResponse{}, nil
+	return nil
 }
 
 // setContainerStarting sets the container into starting state. In starting state, the

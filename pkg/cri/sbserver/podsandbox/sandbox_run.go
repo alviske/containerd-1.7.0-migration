@@ -218,7 +218,7 @@ func (c *Controller) Start(ctx context.Context, id string) (cin sandbox.Controll
 	}
 
 	// We don't need stdio for sandbox container.
-	task, err := container.NewTask(ctx, containerdio.NullIO, taskOpts...)
+	task, err := container.NewTask(ctx, containerdio.NullIO, "", taskOpts...)
 	if err != nil {
 		return cin, fmt.Errorf("failed to create containerd task: %w", err)
 	}

@@ -357,7 +357,7 @@ func (c *criService) RunPodSandbox(ctx context.Context, r *runtime.RunPodSandbox
 		taskOpts = append(taskOpts, containerd.WithRuntimePath(ociRuntime.Path))
 	}
 	// We don't need stdio for sandbox container.
-	task, err := container.NewTask(ctx, containerdio.NullIO, taskOpts...)
+	task, err := container.NewTask(ctx, containerdio.NullIO, "", taskOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create containerd task: %w", err)
 	}

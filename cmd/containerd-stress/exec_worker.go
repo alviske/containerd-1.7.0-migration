@@ -51,7 +51,7 @@ func (w *execWorker) exec(ctx, tctx context.Context) {
 	}
 	defer c.Delete(ctx, containerd.WithSnapshotCleanup)
 
-	task, err := c.NewTask(ctx, cio.NullIO)
+	task, err := c.NewTask(ctx, cio.NullIO, "")
 	if err != nil {
 		logrus.WithError(err).Error("create exec container's task")
 		return

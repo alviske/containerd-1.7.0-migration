@@ -432,14 +432,16 @@ func (p *Init) checkpoint(ctx context.Context, r *CheckpointConfig) error {
 		work = filepath.Join(p.WorkDir, "criu-work")
 		defer os.RemoveAll(work)
 	}
+	// TODO(KE): add parentPath, AllowOpenTCP change to true
 	if err := p.runtime.Checkpoint(ctx, p.id, &runc.CheckpointOpts{
 		WorkDir:                  work,
 		ImagePath:                r.Path,
-		AllowOpenTCP:             r.AllowOpenTCP,
+		AllowOpenTCP:             true,
 		AllowExternalUnixSockets: r.AllowExternalUnixSockets,
 		AllowTerminal:            r.AllowTerminal,
 		FileLocks:                r.FileLocks,
 		EmptyNamespaces:          r.EmptyNamespaces,
+		ParentPath:               r.ParentPath,
 	}, actions...); err != nil {
 		dumpLog := filepath.Join(p.Bundle, "criu-dump.log")
 		if cerr := copyFile(dumpLog, filepath.Join(work, "dump.log")); cerr != nil {

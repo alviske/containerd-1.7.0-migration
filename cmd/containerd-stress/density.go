@@ -107,7 +107,7 @@ var densityCommand = cli.Command{
 				}
 				defer c.Delete(ctx, containerd.WithSnapshotCleanup)
 
-				t, err := c.NewTask(ctx, cio.NullIO)
+				t, err := c.NewTask(ctx, cio.NullIO, "")
 				if err != nil {
 					return err
 				}

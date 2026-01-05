@@ -1664,7 +1664,6 @@ func (in *instrumentedService) CheckpointContainer(ctx context.Context, r *runti
 	if err := in.checkInitialized(); err != nil {
 		return nil, err
 	}
-
 	defer func() {
 		if err != nil {
 			log.G(ctx).WithError(err).Errorf("CheckpointContainer failed, error")
@@ -1674,6 +1673,23 @@ func (in *instrumentedService) CheckpointContainer(ctx context.Context, r *runti
 	}()
 
 	res, err = in.c.CheckpointContainer(ctx, r)
+	return res, errdefs.ToGRPC(err)
+}
+
+func (in *instrumentedService) RestoreContainer(ctx context.Context, r *runtime.RestoreContainerRequest) (res *runtime.RestoreContainerResponse, err error) {
+	if err := in.checkInitialized(); err != nil {
+		return nil, err
+	}
+	log.G(ctx).Infof("Restore Container %q with %s", r.GetContainerId(), r.GetLocation())
+	defer func() {
+		if err != nil {
+			log.G(ctx).WithError(err).Errorf("RestoreContainer failed, error")
+		} else {
+			log.G(ctx).Debugf("Restore Container %q returns successfully", r.GetContainerId())
+		}
+	}()
+	// Add namespace k8s.io to context
+	res, err = in.c.RestoreContainer(ctrdutil.WithNamespace(ctx), r)
 	return res, errdefs.ToGRPC(err)
 }
 
