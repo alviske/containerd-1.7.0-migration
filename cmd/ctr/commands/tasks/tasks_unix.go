@@ -110,7 +110,7 @@ func NewTask(ctx gocontext.Context, client *containerd.Client, container contain
 	} else {
 		ioCreator = cio.NewCreator(append([]cio.Opt{cio.WithStreams(stdinC, os.Stdout, os.Stderr)}, ioOpts...)...)
 	}
-	t, err := container.NewTask(ctx, ioCreator, opts...)
+	t, err := container.NewTask(ctx, ioCreator, "", opts...)
 	if err != nil {
 		return nil, err
 	}
