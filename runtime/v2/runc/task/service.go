@@ -373,7 +373,7 @@ func (s *service) Pids(ctx context.Context, r *taskAPI.PidsRequest) (*taskAPI.Pi
 		for _, p := range container.ExecdProcesses() {
 			if p.Pid() == int(pid) {
 				d := &options.ProcessDetails{
-					ExecID: p.ID(),
+					ExecId: p.ID(),
 				}
 				a, err := protobuf.MarshalAnyToProto(d)
 				if err != nil {

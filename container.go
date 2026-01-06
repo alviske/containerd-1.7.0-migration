@@ -355,7 +355,6 @@ func UnTarContainerRootfs(tarball, targetPath string) error {
 		if err != nil {
 			return err
 		}
-		return nil
 	}
 	return nil
 }
