@@ -4,12 +4,6 @@ package containerd.runc.v1;
 
 option go_package = "github.com/containerd/containerd/runtime/v2/runc/options;options";
 
-import "google/protobuf/descriptor.proto";
-
-extend google.protobuf.FieldOptions {
-	string protobuf_field_name = 51001;
-}
-
 message Options {
 	// disable pivot root when creating a container
 	bool no_pivot_root = 1;
@@ -59,11 +53,11 @@ message CheckpointOptions {
 	string image_path = 8;
 	// checkpoint work path
 	string work_path = 9;
-	// TODO(KE): checkpointPath
+	// path for pre-dump TODO(cjx.bupt)
 	string parent_path = 10;
 }
 
 message ProcessDetails {
 	// exec process id if the process is managed by a shim
-	string exec_id = 1 [(protobuf_field_name) = "ExecID"];
+	string exec_id = 1;[(protobuf_field_name) = "ExecID"];
 }

@@ -478,6 +478,7 @@ func (c *Container) Checkpoint(ctx context.Context, r *task.CheckpointTaskReques
 		}
 		opts = v.(*options.CheckpointOptions)
 	}
+	// TODO(KE): add parentPath
 	return p.(*process.Init).Checkpoint(ctx, &process.CheckpointConfig{
 		Path:                     r.Path,
 		Exit:                     opts.Exit,
@@ -487,6 +488,7 @@ func (c *Container) Checkpoint(ctx context.Context, r *task.CheckpointTaskReques
 		FileLocks:                opts.FileLocks,
 		EmptyNamespaces:          opts.EmptyNamespaces,
 		WorkDir:                  opts.WorkPath,
+		ParentPath:               opts.ParentPath,
 	})
 }
 

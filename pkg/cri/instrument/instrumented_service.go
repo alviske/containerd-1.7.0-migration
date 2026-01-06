@@ -1671,8 +1671,8 @@ func (in *instrumentedService) CheckpointContainer(ctx context.Context, r *runti
 			log.G(ctx).Debug("CheckpointContainer returns successfully")
 		}
 	}()
-
-	res, err = in.c.CheckpointContainer(ctx, r)
+	// Add namespace k8s.io to context
+	res, err = in.c.CheckpointContainer(ctrdutil.WithNamespace(ctx), r)
 	return res, errdefs.ToGRPC(err)
 }
 

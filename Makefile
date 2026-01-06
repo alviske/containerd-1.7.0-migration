@@ -30,8 +30,10 @@ MANDIR        ?= $(DATADIR)/man
 TEST_IMAGE_LIST ?=
 
 # Used to populate variables in version package.
-VERSION ?= $(shell git describe --match 'v[0-9]*' --dirty='.m' --always)
-REVISION=$(shell git rev-parse HEAD)$(shell if ! git diff --no-ext-diff --quiet --exit-code; then echo .m; fi)
+#VERSION ?= $(shell git describe --match 'v[0-9]*' --dirty='.m' --always)
+VERSION = v1.7.0
+#REVISION=$(shell git rev-parse HEAD)$(shell if ! git diff --no-ext-diff --quiet --exit-code; then echo .m; fi)
+REVISION=1fbd70374134b891f97ce19c70b6e50c7b9f4e0d
 PACKAGE=github.com/containerd/containerd
 SHIM_CGO_ENABLED ?= 0
 
